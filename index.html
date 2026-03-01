@@ -8,7 +8,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Bayern Tickets">
     <title>FC Bayern Ticketverteilung 25/26</title>
-    <link rel="manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -16,236 +15,527 @@
     <style>
         * { -webkit-tap-highlight-color: transparent; }
         body { overscroll-behavior-y: contain; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes slideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+        .slide-up { animation: slideUp 0.28s ease forwards; }
+        select {
+            -webkit-appearance: none; appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; padding-right: 32px !important;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
-    <div id="root"></div>
-    
-    <script type="text/babel">
-        const { useState, useMemo } = React;
-        
-        // Lucide Icons
-        const Search = (props) => (<svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>);
-        const Calendar = (props) => (<svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>);
-        const Users = (props) => (<svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>);
-        const Award = (props) => (<svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>);
-        const Filter = (props) => (<svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>);
-        const Clock = (props) => (<svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>);
-        
-        const BayernTicketDashboard = () => {
-            const [searchTerm, setSearchTerm] = useState('');
-            const [selectedCompetition, setSelectedCompetition] = useState('all');
-            const [showFilters, setShowFilters] = useState(false);
-            
-            const avatarMap = {
-                'Franz Weiß': 'avatars/franz.jpg',
-                'Beate Weiß': 'avatars/beate.jpg',
-                'Sebastian Weiß': 'avatars/sebastian.jpg',
-                'Alexander Claves': 'avatars/claves.jpg',
-                'Ralf Erhart': 'avatars/ralf.jpg',
-                'Ruben Lynen': 'avatars/ruben.jpg',
-                'Alex Majewski': 'avatars/alex.jpg',
-                'Sophia Reif': 'avatars/sophia.jpg'
-            };
-            
-            const getBadge = (opponent) => {
-                const badges = {
-                    'RB Leipzig': 'https://upload.wikimedia.org/wikipedia/en/0/04/RB_Leipzig_2014_logo.svg',
-                    'Hamburger SV': 'https://upload.wikimedia.org/wikipedia/commons/6/66/HSV-Logo.svg',
-                    'Werder Bremen': 'https://upload.wikimedia.org/wikipedia/commons/b/be/SV-Werder-Bremen-Logo.svg',
-                    'Borussia Dortmund': 'https://upload.wikimedia.org/wikipedia/commons/6/67/Borussia_Dortmund_logo.svg',
-                    'Bayer 04 Leverkusen': 'https://upload.wikimedia.org/wikipedia/de/f/f7/Bayer_Leverkusen_Logo.svg',
-                    'SC Freiburg': 'https://upload.wikimedia.org/wikipedia/de/f/f1/SC-Freiburg_Logo-neu.svg',
-                    'FC St. Pauli': 'https://upload.wikimedia.org/wikipedia/commons/e/e8/Logo_FC_St._Pauli.svg',
-                    'FSV Mainz 05': 'https://upload.wikimedia.org/wikipedia/commons/9/9e/Logo_Mainz_05.svg',
-                    'VfL Wolfsburg': 'https://upload.wikimedia.org/wikipedia/commons/f/f3/Logo-VfL-Wolfsburg.svg',
-                    'FC Augsburg': 'https://upload.wikimedia.org/wikipedia/de/b/b7/FC_Augsburg_logo.svg',
-                    'TSG 1899 Hoffenheim': 'https://upload.wikimedia.org/wikipedia/commons/6/64/TSG_1899_Hoffenheim_logo.svg',
-                    'Eintracht Frankfurt': 'https://upload.wikimedia.org/wikipedia/commons/0/04/Eintracht_Frankfurt_Logo.svg',
-                    'Bor. Mönchengladbach': 'https://upload.wikimedia.org/wikipedia/commons/8/81/Borussia_M%C3%B6nchengladbach_logo.svg',
-                    'Union Berlin': 'https://upload.wikimedia.org/wikipedia/commons/4/44/FC_Union_Berlin_Logo.svg',
-                    'VfB Stuttgart': 'https://upload.wikimedia.org/wikipedia/commons/e/eb/VfB_Stuttgart_1893_Logo.svg',
-                    '1. FC Heidenheim': 'https://upload.wikimedia.org/wikipedia/commons/e/e2/1._FC_Heidenheim_1846_logo.svg',
-                    '1. FC Köln': 'https://upload.wikimedia.org/wikipedia/en/1/16/1._FC_K%C3%B6ln_logo.svg',
-                    'FC Chelsea': 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg',
-                    'Club Brügge': 'https://upload.wikimedia.org/wikipedia/en/d/d0/Club_Brugge_KV_logo.svg',
-                    'Sporting Lissabon': 'https://upload.wikimedia.org/wikipedia/en/3/3e/Sporting_Clube_de_Portugal_%28Logo%29.svg',
-                    'Union Saint-Gilloise': 'https://upload.wikimedia.org/wikipedia/en/e/e4/Royale_Union_Saint-Gilloise_logo.svg'
-                };
-                return badges[opponent] || null;
-            };
-            
-            const matches = [
-                { id: 1, date: '2025-08-23', opponent: 'RB Leipzig', competition: 'Bundesliga', user: 'Franz Weiß', status: 'upcoming', round: 1 },
-                { id: 2, date: '2025-08-30', opponent: 'Hamburger SV', competition: 'Bundesliga', user: 'Beate Weiß & Franz Weiß', status: 'upcoming', round: 2 },
-                { id: 3, date: '2025-09-13', opponent: 'Werder Bremen', competition: 'Bundesliga', user: 'Dominik Lutz', status: 'upcoming', round: 3 },
-                { id: 4, date: '2025-09-20', opponent: 'Borussia Dortmund', competition: 'Bundesliga', user: 'Christoph Hoffmann & Franz Weiß', status: 'upcoming', round: 4 },
-                { id: 5, date: '2025-09-27', opponent: 'Bayer 04 Leverkusen', competition: 'Bundesliga', user: 'Sebastian Weiß & Alexander Claves', status: 'upcoming', round: 5 },
-                { id: 6, date: '2025-10-04', opponent: 'SC Freiburg', competition: 'Bundesliga', user: 'Sophia Reif', status: 'upcoming', round: 6 },
-                { id: 7, date: '2025-10-18', opponent: 'FC St. Pauli', competition: 'Bundesliga', user: 'Danny Westermaier', status: 'upcoming', round: 7 },
-                { id: 8, date: '2025-10-25', opponent: 'FSV Mainz 05', competition: 'Bundesliga', user: 'Ralf Erhart', status: 'upcoming', round: 8 },
-                { id: 9, date: '2025-11-01', opponent: 'VfL Wolfsburg', competition: 'Bundesliga', user: 'Max Kalkusch', status: 'upcoming', round: 9 },
-                { id: 10, date: '2025-11-08', opponent: 'FC Augsburg', competition: 'Bundesliga', user: 'Michael Lederer', status: 'upcoming', round: 10 },
-                { id: 11, date: '2025-11-22', opponent: 'TSG 1899 Hoffenheim', competition: 'Bundesliga', user: 'Dora Skrybus-Loy', status: 'upcoming', round: 11 },
-                { id: 12, date: '2025-11-29', opponent: 'Eintracht Frankfurt', competition: 'Bundesliga', user: 'Tom Petri', status: 'upcoming', round: 12 },
-                { id: 13, date: '2025-12-06', opponent: 'Bor. Mönchengladbach', competition: 'Bundesliga', user: 'Ruben Lynen', status: 'upcoming', round: 13 },
-                { id: 14, date: '2025-12-13', opponent: 'Union Berlin', competition: 'Bundesliga', user: 'Alex Majewski', status: 'upcoming', round: 14 },
-                { id: 15, date: '2025-12-20', opponent: 'VfB Stuttgart', competition: 'Bundesliga', user: 'Tim Schwarzmaier', status: 'upcoming', round: 15 },
-                { id: 16, date: '2026-01-17', opponent: '1. FC Heidenheim', competition: 'Bundesliga', user: 'Stefan Wintershoff', status: 'upcoming', round: 16 },
-                { id: 17, date: '2026-05-17', opponent: '1. FC Köln', competition: 'Bundesliga', user: 'Annika Schnell', status: 'upcoming', round: 34 },
-                { id: 18, date: '2025-09-17', opponent: 'FC Chelsea', competition: 'Champions League', user: 'Warteliste', status: 'waitlist', round: 'MD1' },
-                { id: 19, date: '2025-10-01', opponent: 'Club Brügge', competition: 'Champions League', user: 'Warteliste', status: 'waitlist', round: 'MD2' },
-                { id: 20, date: '2025-11-26', opponent: 'Sporting Lissabon', competition: 'Champions League', user: 'Warteliste', status: 'waitlist', round: 'MD5' },
-                { id: 21, date: '2026-01-22', opponent: 'Union Saint-Gilloise', competition: 'Champions League', user: 'Warteliste', status: 'waitlist', round: 'MD7' }
-            ];
-            
-            const getAvatar = (userName) => {
-                const names = userName.split(' & ');
-                if (names.length === 2) {
-                    return (
-                        <div className="flex -space-x-2">
-                            {names.map((name, idx) => (
-                                <img
-                                    key={idx}
-                                    src={avatarMap[name.trim()] || 'avatars/placeholder.jpg'}
-                                    alt={name}
-                                    className="w-12 h-12 rounded-full border-2 border-gray-200 object-cover"
-                                    style={{ zIndex: names.length - idx }}
-                                />
-                            ))}
-                        </div>
-                    );
-                }
-                return <img src={avatarMap[userName] || 'avatars/placeholder.jpg'} alt={userName} className="w-12 h-12 rounded-full border-2 border-gray-200 object-cover" />;
-            };
-            
-            const filteredMatches = useMemo(() => {
-                return matches.filter(match => {
-                    const matchesSearch = match.opponent.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                        match.user.toLowerCase().includes(searchTerm.toLowerCase());
-                    const matchesCompetition = selectedCompetition === 'all' || match.competition === selectedCompetition;
-                    return matchesSearch && matchesCompetition;
-                });
-            }, [searchTerm, selectedCompetition]);
-            
-            const stats = useMemo(() => ({
-                totalMatches: matches.length,
-                bundesliga: matches.filter(m => m.competition === 'Bundesliga').length,
-                championsLeague: matches.filter(m => m.competition === 'Champions League').length,
-                assigned: matches.filter(m => m.status === 'upcoming').length,
-                waitlist: matches.filter(m => m.status === 'waitlist').length
-            }), []);
-            
-            const formatDate = (dateStr) => {
-                return new Date(dateStr).toLocaleDateString('de-DE');
-            };
-            
-            return (
-                <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50">
-                    <div className="max-w-7xl mx-auto p-4 pb-20">
-                        <div className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl p-6 mb-6 shadow-xl">
-                            <div className="flex items-center gap-3 mb-4">
-                                <Award className="w-10 h-10" />
-                                <div>
-                                    <h1 className="text-2xl font-bold">FC Bayern München</h1>
-                                    <p className="text-red-100">Ticketverteilung Saison 25/26</p>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 mt-4">
-                                <div className="bg-white/10 backdrop-blur rounded-lg p-3">
-                                    <div className="text-3xl font-bold">{stats.bundesliga}</div>
-                                    <div className="text-sm text-red-100">Bundesliga</div>
-                                </div>
-                                <div className="bg-white/10 backdrop-blur rounded-lg p-3">
-                                    <div className="text-3xl font-bold">{stats.championsLeague}</div>
-                                    <div className="text-sm text-red-100">Champions League</div>
-                                </div>
-                                <div className="bg-white/10 backdrop-blur rounded-lg p-3">
-                                    <div className="text-3xl font-bold">{stats.assigned}</div>
-                                    <div className="text-sm text-red-100">Vergeben</div>
-                                </div>
-                                <div className="bg-white/10 backdrop-blur rounded-lg p-3">
-                                    <div className="text-3xl font-bold">{stats.waitlist}</div>
-                                    <div className="text-sm text-red-100">Warteliste</div>
-                                </div>
-                            </div>
-                        </div>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo } = React;
 
-                        <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
-                            <div className="flex gap-2 mb-3">
-                                <div className="flex-1 relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="Suche Gegner oder Person..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg"
-                                    />
-                                </div>
-                                <button onClick={() => setShowFilters(!showFilters)} className="px-4 py-3 bg-gray-100 rounded-lg">
-                                    <Filter className="w-5 h-5" />
-                                </button>
-                            </div>
-                            {showFilters && (
-                                <div className="flex gap-2 flex-wrap">
-                                    <button onClick={() => setSelectedCompetition('all')} className={`px-4 py-2 rounded-lg ${selectedCompetition === 'all' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Alle</button>
-                                    <button onClick={() => setSelectedCompetition('Bundesliga')} className={`px-4 py-2 rounded-lg ${selectedCompetition === 'Bundesliga' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Bundesliga</button>
-                                    <button onClick={() => setSelectedCompetition('Champions League')} className={`px-4 py-2 rounded-lg ${selectedCompetition === 'Champions League' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Champions League</button>
-                                </div>
-                            )}
-                        </div>
+// ── Icons ──────────────────────────────────────────────────────────────────
+const Search  = p => <svg {...p} fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>;
+const Cal     = p => <svg {...p} fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+const Trophy  = p => <svg {...p} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>;
+const Check   = p => <svg {...p} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+const Xc      = p => <svg {...p} fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>;
+const Clock   = p => <svg {...p} fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+const Edit    = p => <svg {...p} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
+const Close   = p => <svg {...p} fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const Refresh = p => <svg {...p} fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>;
+const Info    = p => <svg {...p} fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>;
 
-                        <div className="grid gap-4">
-                            {filteredMatches.map((match) => {
-                                const badgeUrl = getBadge(match.opponent);
-                                return (
-                                    <div key={match.id} className="bg-white rounded-xl shadow-md p-4">
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div className="flex items-center gap-3 flex-1">
-                                                {badgeUrl && <img src={badgeUrl} alt={match.opponent} className="w-8 h-8 object-contain" />}
-                                                <div>
-                                                    <h3 className="font-bold text-lg">{match.opponent}</h3>
-                                                    <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                                                        <Calendar className="w-4 h-4" />
-                                                        <span>{formatDate(match.date)}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${match.competition === 'Bundesliga' ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'}`}>
-                                                {match.competition === 'Bundesliga' ? `${match.round}. Spieltag` : match.round}
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center justify-between pt-3 border-t">
-                                            <div className="flex items-center gap-3">
-                                                {getAvatar(match.user)}
-                                                <div>
-                                                    <div className="text-sm font-semibold">{match.user}</div>
-                                                    <div className="text-xs text-gray-500">{match.status === 'waitlist' ? 'Auf Warteliste' : 'Ticket zugewiesen'}</div>
-                                                </div>
-                                            </div>
-                                            {match.status === 'waitlist' && (
-                                                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
-                                                    <Clock className="w-3 h-3 inline mr-1" />Warteliste
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
+// ── Club badges ────────────────────────────────────────────────────────────
+const BADGES = {
+  // Bundesliga – stabile Wikimedia Commons URLs
+  'RB Leipzig':             'https://upload.wikimedia.org/wikipedia/en/0/04/RB_Leipzig_2014_logo.svg',
+  'Hamburger SV':           'https://upload.wikimedia.org/wikipedia/commons/6/66/HSV-Logo.svg',
+  'Werder Bremen':          'https://upload.wikimedia.org/wikipedia/commons/b/be/SV-Werder-Bremen-Logo.svg',
+  'Borussia Dortmund':      'https://upload.wikimedia.org/wikipedia/commons/6/67/Borussia_Dortmund_logo.svg',
+  'Bayer Leverkusen':       'https://upload.wikimedia.org/wikipedia/en/5/59/Bayer_04_Leverkusen_logo.svg',
+  'SC Freiburg':            'https://upload.wikimedia.org/wikipedia/commons/8/88/SC_Freiburg_Logo.svg',
+  'FC St. Pauli':           'https://upload.wikimedia.org/wikipedia/commons/e/e8/Logo_FC_St._Pauli.svg',
+  'FSV Mainz 05':           'https://upload.wikimedia.org/wikipedia/commons/9/9e/Logo_Mainz_05.svg',
+  'VfL Wolfsburg':          'https://upload.wikimedia.org/wikipedia/commons/f/f3/Logo-VfL-Wolfsburg.svg',
+  'FC Augsburg':            'https://upload.wikimedia.org/wikipedia/commons/b/b6/FC_Augsburg_logo.svg',
+  'TSG Hoffenheim':         'https://upload.wikimedia.org/wikipedia/commons/6/64/TSG_1899_Hoffenheim_logo.svg',
+  'TSG 1899 Hoffenheim':    'https://upload.wikimedia.org/wikipedia/commons/6/64/TSG_1899_Hoffenheim_logo.svg',
+  'Eintracht Frankfurt':    'https://upload.wikimedia.org/wikipedia/commons/0/04/Eintracht_Frankfurt_Logo.svg',
+  "Borussia M'gladbach":    'https://upload.wikimedia.org/wikipedia/commons/8/81/Borussia_M%C3%B6nchengladbach_logo.svg',
+  'Borussia Mönchengladbach':'https://upload.wikimedia.org/wikipedia/commons/8/81/Borussia_M%C3%B6nchengladbach_logo.svg',
+  'Union Berlin':           'https://upload.wikimedia.org/wikipedia/commons/4/44/FC_Union_Berlin_Logo.svg',
+  '1. FC Union Berlin':     'https://upload.wikimedia.org/wikipedia/commons/4/44/FC_Union_Berlin_Logo.svg',
+  'VfB Stuttgart':          'https://upload.wikimedia.org/wikipedia/commons/e/eb/VfB_Stuttgart_1893_Logo.svg',
+  '1. FC Heidenheim':       'https://upload.wikimedia.org/wikipedia/commons/e/e2/1._FC_Heidenheim_1846_logo.svg',
+  'Heidenheim':             'https://upload.wikimedia.org/wikipedia/commons/e/e2/1._FC_Heidenheim_1846_logo.svg',
+  '1. FC Köln':             'https://upload.wikimedia.org/wikipedia/en/1/16/1._FC_K%C3%B6ln_logo.svg',
+  'VfL Bochum':             'https://upload.wikimedia.org/wikipedia/commons/9/9b/VfL_Bochum_Logo.svg',
+  'Holstein Kiel':          'https://upload.wikimedia.org/wikipedia/commons/7/76/Holstein_Kiel_Logo.svg',
+  // Champions League
+  'Chelsea':                'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg',
+  'Brügge':                 'https://upload.wikimedia.org/wikipedia/commons/9/90/Club_Brugge_KV_logo.svg',
+  'Lissabon':               'https://upload.wikimedia.org/wikipedia/commons/7/78/Sporting_CP_logo.svg',
+  'Union Saint Gilloise':   'https://upload.wikimedia.org/wikipedia/commons/3/35/Royale_Union_Saint-Gilloise.svg',
+  'Atalanta Bergamo':       'https://upload.wikimedia.org/wikipedia/commons/d/dc/Logo_Atalanta_BC.svg',
+  'Dinamo Zagreb':          'https://upload.wikimedia.org/wikipedia/commons/5/5e/GNK_Dinamo_Zagreb_logo.svg',
+  'Paris':                  'https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg',
+  'Benfica Lissabon':       'https://upload.wikimedia.org/wikipedia/commons/f/f3/SL_Benfica_logo_%282015%29.svg',
+  'Bratislava':             'https://upload.wikimedia.org/wikipedia/commons/b/b3/SK_Slovan_Bratislava_logo.svg',
+  'Barcelona':              'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg',
+  'Olympiakos Piräus':      'https://upload.wikimedia.org/wikipedia/en/1/1e/Olympiacos_FC_logo.svg',
+};
+
+// ── Data ───────────────────────────────────────────────────────────────────
+// Interessenten für die nächste Saison (aus Notizen entnommen)
+const INTERESSENTEN_2627 = [
+  'Ann-Marie Götz',
+  'Flo',
+  'Stefan Wintershoff',
+  'Annika Schnell',
+  'Dani',
+];
+
+const INIT_2526 = [
+  {id:1,  st:1,  date:'Fr., 22.08.2025', time:'20:30', opponent:'RB Leipzig',          comp:'Bundesliga',       user:'Mama, Papa',         versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'6:0'},
+  {id:2,  st:3,  date:'Sa., 13.09.2025', time:'18:30', opponent:'Hamburger SV',         comp:'Bundesliga',       user:'Dominik',            versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'5:0'},
+  {id:3,  st:5,  date:'Fr., 26.09.2025', time:'20:30', opponent:'Werder Bremen',        comp:'Bundesliga',       user:'Christoph, Papa',    versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'4:0'},
+  {id:4,  st:7,  date:'Sa., 18.10.2025', time:'18:30', opponent:'Borussia Dortmund',    comp:'Bundesliga',       user:'Sebastian, Claves',  versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'2:1'},
+  {id:5,  st:9,  date:'Sa., 01.11.2025', time:'18:30', opponent:'Bayer Leverkusen',     comp:'Bundesliga',       user:'Sophia',             versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'3:0'},
+  {id:6,  st:11, date:'Sa., 22.11.2025', time:'15:30', opponent:'SC Freiburg',          comp:'Bundesliga',       user:'Danny',              versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'6:2'},
+  {id:7,  st:12, date:'Sa., 29.11.2025', time:'15:30', opponent:'FC St. Pauli',         comp:'Bundesliga',       user:'Ralf Erhart',        versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'3:1'},
+  {id:8,  st:14, date:'So., 14.12.2025', time:'17:30', opponent:'FSV Mainz 05',         comp:'Bundesliga',       user:'Max Kalkusch',       versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'2:2'},
+  {id:9,  st:16, date:'So., 11.01.2026', time:'17:30', opponent:'VfL Wolfsburg',        comp:'Bundesliga',       user:'Lederer Michael',    versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'8:1'},
+  {id:10, st:19, date:'Sa., 24.01.2026', time:'15:30', opponent:'FC Augsburg',          comp:'Bundesliga',       user:'Dora Skrybus-Loy',   versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'1:2'},
+  {id:11, st:21, date:'So., 08.02.2026', time:'17:30', opponent:'TSG Hoffenheim',       comp:'Bundesliga',       user:'Tom Petri',          versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'5:1'},
+  {id:12, st:23, date:'Sa., 21.02.2026', time:'15:30', opponent:'Eintracht Frankfurt',  comp:'Bundesliga',       user:'Danny',              versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'3:2'},
+  {id:13, st:25, date:'Sa., 07.03.2026', time:'15:30', opponent:"Borussia M'gladbach",  comp:'Bundesliga',       user:'Ruben',              versendet:'Ja',  bezahlt:'Ja',   papa:'Ja'},
+  {id:14, st:27, date:'Sa., 21.03.2026', time:'15:30', opponent:'Union Berlin',         comp:'Bundesliga',       user:'Majewski',           versendet:'Ja',  bezahlt:'Ja',   papa:'Ja'},
+  {id:15, st:30, date:'Sa., 18.04.2026', time:'15:30', opponent:'VfB Stuttgart',        comp:'Bundesliga',       user:'Sophia',             versendet:'Ja',  bezahlt:'Ja',   papa:'Ja'},
+  {id:16, st:32, date:'Sa., 02.05.2026', time:'15:30', opponent:'1. FC Heidenheim',     comp:'Bundesliga',       user:'Tim',                versendet:'Ja',  bezahlt:'Nein', papa:'Nein'},
+  {id:17, st:34, date:'Sa., 16.05.2026', time:'15:30', opponent:'1. FC Köln',           comp:'Bundesliga',       user:'Mama, Papa',         versendet:'Ja',  bezahlt:'Ja',   papa:'Ja'},
+  {id:18, st:'CL', date:'Mi., 17.09.2025', time:'21:00', opponent:'Chelsea',            comp:'Champions League', user:'Ruben',              versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'3:1', clPhase:'Ligaphase'},
+  {id:19, st:'CL', date:'Mi., 22.10.2025', time:'21:00', opponent:'Brügge',             comp:'Champions League', user:'Stefan Wintershoff', versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'4:0', clPhase:'Ligaphase'},
+  {id:20, st:'CL', date:'Mi., 21.01.2026', time:'21:00', opponent:'Union Saint Gilloise', comp:'Champions League', user:'Annika Schnell',   versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'2:0', clPhase:'Ligaphase'},
+  {id:21, st:'CL', date:'Mi., 09.12.2025', time:'21:00', opponent:'Lissabon',           comp:'Champions League', user:'Annika Schnell',     versendet:'Ja',  bezahlt:'Ja',   papa:'Ja',   result:'3:1', clPhase:'Ligaphase'},
+  {id:22, st:'CL', date:'Mi., 18.03.2026',time:'21:00', opponent:'Atalanta Bergamo',     comp:'Champions League', user:'',                   versendet:'Nein',bezahlt:'Nein', papa:'Nein', notizen:'Hinspiel: Di. 10.03. in Bergamo', clPhase:'Achtelfinale (Rückspiel)'},
+];
+
+const INIT_2425 = [
+  {id:1,  st:2,  date:'01.09.2024',        opponent:'SC Freiburg',             user:'Mama, Papa',        versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:2,  st:5,  date:'28.09.2024',        opponent:'Bayer Leverkusen',        user:'Basti, Selli',      versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:3,  st:7,  date:'18.–20.10.2024',    opponent:'VfB Stuttgart',           user:'Michi Schüller',    versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:4,  st:9,  date:'01.–03.11.2024',    opponent:'1. FC Union Berlin',      user:'Danny',             versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:5,  st:11, date:'22.–24.11.2024',    opponent:'FC Augsburg',             user:'Sophia',            versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:6,  st:13, date:'06.–08.12.2024',    opponent:'Heidenheim',              user:'Annika Schnell',    versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:7,  st:15, date:'20.–22.12.2024',    opponent:'RB Leipzig',              user:'Annika Schnell',    versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:8,  st:17, date:'14.–15.01.2025',    opponent:'TSG 1899 Hoffenheim',     user:'Ralf Erhart',       versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:9,  st:18, date:'17.–19.01.2025',    opponent:'VfL Wolfsburg',           user:'Alex Majewski',     versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:10, st:20, date:'31.01.–02.02.2025', opponent:'Holstein Kiel',           user:'Andi',              versendet:'Ja', bezahlt:'offen', comp:'Bundesliga'},
+  {id:11, st:21, date:'07.–09.02.2025',    opponent:'Werder Bremen',           user:'Alex Majewski',     versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:12, st:23, date:'21.–23.02.2025',    opponent:'Eintracht Frankfurt',     user:'Ralf Erhart',       versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga', notizen:'Frankfurt nächstes Jahr: Dani'},
+  {id:13, st:25, date:'07.–09.03.2025',    opponent:'VfL Bochum',              user:'Ruben',             versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:14, st:27, date:'28.–30.03.2025',    opponent:'FC St. Pauli',            user:'Mama, Papa',        versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:15, st:29, date:'11.–13.04.2025',    opponent:'Borussia Dortmund',       user:'Basti, Selli',      versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:16, st:31, date:'25.–27.04.2025',    opponent:'FSV Mainz 05',            user:'Christoph',         versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:17, st:33, date:'09.–11.05.2025',    opponent:'Borussia Mönchengladbach',user:'Mama, Papa',        versendet:'Ja', bezahlt:'Ja',    comp:'Bundesliga'},
+  {id:18, st:'CL', date:'17.09.2024',      opponent:'Dinamo Zagreb',           user:'Kollege Papa',      versendet:'Ja', bezahlt:'Ja',    comp:'Champions League', clPhase:'Ligaphase'},
+  {id:19, st:'CL', date:'06.11.2024',      opponent:'Benfica Lissabon',        user:'Stefan Diwisch',    versendet:'Ja', bezahlt:'n/a',   comp:'Champions League', clPhase:'Ligaphase'},
+  {id:20, st:'CL', date:'26.11.2024',      opponent:'Paris',                   user:'Juli',              versendet:'Ja', bezahlt:'Ja',    comp:'Champions League', clPhase:'Ligaphase'},
+  {id:21, st:'CL', date:'29.01.2025',      opponent:'Bratislava',              user:'Katarina Stefanek', versendet:'Ja', bezahlt:'Ja',    comp:'Champions League', clPhase:'Ligaphase'},
+];
+
+// ── Edit Modal ─────────────────────────────────────────────────────────────
+const EditModal = ({ match, onSave, onClose }) => {
+  const [form, setForm] = useState({...match});
+  const isCL = form.comp === 'Champions League';
+  const s = (k,v) => setForm(f => ({...f,[k]:v}));
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-3" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl slide-up overflow-hidden" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            {BADGES[form.opponent] && <img src={BADGES[form.opponent]} className="w-8 h-8 object-contain" alt=""/>}
+            <div>
+              <div className="font-bold text-gray-900 text-base leading-tight">{form.opponent}</div>
+              <div className="text-xs text-gray-400">{isCL ? (form.clPhase||'Champions League') : `Spieltag ${form.st}`}</div>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+            <Close className="w-5 h-5"/>
+          </button>
+        </div>
+
+        {/* Fields */}
+        <div className="px-5 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+          {/* Nutzer */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Nutzer</label>
+            <input value={form.user||''} onChange={e=>s('user',e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
+              placeholder="Name eingeben…"/>
+          </div>
+          {/* Versendet */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Versendet</label>
+            <select value={form.versendet||''} onChange={e=>s('versendet',e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white">
+              <option value="Ja">Ja</option>
+              <option value="Nein">Nein</option>
+            </select>
+          </div>
+          {/* Bezahlt */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Bezahlt</label>
+            <select value={form.bezahlt||''} onChange={e=>s('bezahlt',e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white">
+              <option value="Ja">Ja</option>
+              <option value="Nein">Nein</option>
+            </select>
+          </div>
+          {/* An Papa weitergeleitet */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">An Papa weitergeleitet</label>
+            <select value={form.papa||''} onChange={e=>s('papa',e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white">
+              <option value="Ja">Ja</option>
+              <option value="Nein">Nein</option>
+            </select>
+          </div>
+          {/* Datum */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Datum</label>
+            <input value={form.date||''} onChange={e=>s('date',e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400"/>
+          </div>
+          {/* Uhrzeit */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Uhrzeit</label>
+            <input value={form.time||''} onChange={e=>s('time',e.target.value)}
+              placeholder="z.B. 18:30"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400"/>
+          </div>
+          {/* Notizen */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Notizen</label>
+            <input value={form.notizen||''} onChange={e=>s('notizen',e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+              placeholder="Optionale Notiz…"/>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 px-5 pb-5 pt-2">
+          <button onClick={onClose}
+            className="flex-1 py-3 border border-gray-200 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm">
+            Abbrechen
+          </button>
+          <button onClick={() => onSave(form)}
+            className="flex-1 py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors text-sm">
+            Speichern
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── CL Modal ───────────────────────────────────────────────────────────────
+const CLModal = ({ result, onClose }) => {
+  if (!result) return null;
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-3" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl slide-up" onClick={e=>e.stopPropagation()}>
+        <div className={`p-5 rounded-t-2xl flex items-center justify-between ${result.type==='uptodate' ? 'bg-blue-600' : 'bg-amber-500'}`}>
+          <div className="flex items-center gap-3">
+            <Trophy className="w-6 h-6 text-white"/>
+            <span className="text-white font-bold">Champions League Update</span>
+          </div>
+          <button onClick={onClose}><Close className="w-5 h-5 text-white/80"/></button>
+        </div>
+        <div className="p-5 space-y-4">
+          {result.drawn ? (
+            <>
+              <div className="flex gap-2 items-start text-blue-700 font-semibold">
+                <Check className="w-5 h-5 flex-shrink-0 mt-0.5"/>
+                <span>Auslosung abgeschlossen – Gegner steht fest!</span>
+              </div>
+              <div className="flex items-center gap-4 bg-blue-50 rounded-2xl p-4">
+                <div className="flex flex-col items-center gap-1.5">
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/d/da/FC_Bayern_M%C3%BCnchen_-_Logo_-_2002_%E2%80%93_2017.svg" className="w-12 h-12 object-contain" alt="Bayern" onError={e=>{e.target.style.display='none'}}/>
+                  <span className="text-xs font-bold text-gray-700">FC Bayern</span>
                 </div>
-            );
-        };
-        
-        ReactDOM.render(<BayernTicketDashboard />, document.getElementById('root'));
-        
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW failed:', err));
-            });
-        }
-    </script>
+                <div className="flex-1 text-center">
+                  <div className="text-lg font-black text-blue-700">VS</div>
+                  <div className="text-xs text-gray-400 mt-0.5">Achtelfinale</div>
+                </div>
+                <div className="flex flex-col items-center gap-1.5">
+                  {BADGES['Atalanta Bergamo'] && <img src={BADGES['Atalanta Bergamo']} className="w-12 h-12 object-contain" alt="Atalanta"/>}
+                  <span className="text-xs font-bold text-gray-700">Atalanta</span>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-start gap-2 bg-gray-50 rounded-xl p-3">
+                  <span className="text-base">✈️</span>
+                  <div><div className="font-semibold text-gray-700">Hinspiel (Auswärts)</div><div className="text-gray-500">{result.hinspiel}</div></div>
+                </div>
+                <div className="flex items-start gap-2 bg-red-50 rounded-xl p-3">
+                  <span className="text-base">🏟️</span>
+                  <div><div className="font-semibold text-red-700">Rückspiel (Heimspiel)</div><div className="text-red-500">{result.rueckspiel}</div></div>
+                </div>
+              </div>
+              <div className="flex gap-1.5 text-xs text-gray-400 bg-gray-50 rounded-xl p-3">
+                <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5"/>
+                Das Heimspiel (Rückspiel) ist bereits in der Liste eingetragen. Bayern hat als Platz-2-Team der Ligaphase immer Heimrecht im Rückspiel.
+              </div>
+            </>
+          ) : (
+            <div className="flex gap-2 items-start text-blue-700">
+              <Check className="w-5 h-5 flex-shrink-0 mt-0.5"/>
+              <span className="font-semibold">Alle bekannten Heimspiele sind bereits eingetragen.</span>
+            </div>
+          )}
+        </div>
+        <div className="px-5 pb-5">
+          <button onClick={onClose} className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors text-sm">Schließen</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Match Card ─────────────────────────────────────────────────────────────
+const MatchCard = ({ match, onEdit }) => {
+  const badge = BADGES[match.opponent];
+  const isCL = match.comp === 'Champions League';
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+      <div className="p-4">
+        {/* Top: badge, name, date, tag */}
+        <div className="flex items-start gap-3 mb-3">
+          <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
+            {badge
+              ? <img src={badge} alt="" className="w-9 h-9 object-contain" onError={e=>{e.target.style.display='none'}}/>
+              : <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-400">{match.opponent[0]}</div>
+            }
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <span className="font-bold text-gray-900 leading-tight">{match.opponent}</span>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${isCL ? 'bg-blue-600 text-white' : 'bg-red-500 text-white'}`}>
+                {isCL ? 'CL' : `ST ${match.st}`}
+              </span>
+            </div>
+            {match.date && (
+              <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                <Cal className="w-3 h-3"/>
+                <span>{match.date}{match.time ? ` · ${match.time} Uhr` : ''}</span>
+              </div>
+            )}
+            {match.result && (() => {
+              const [h,a] = match.result.split(':').map(Number);
+              const col = h>a ? 'text-green-600 bg-green-50' : h===a ? 'text-amber-600 bg-amber-50' : 'text-red-600 bg-red-50';
+              return <span className={`inline-block text-xs font-bold mt-0.5 px-1.5 py-0.5 rounded ${col}`}>{match.result}</span>;
+            })()}
+            {isCL && match.clPhase && <div className="text-xs text-blue-500 font-medium mt-0.5">{match.clPhase}</div>}
+          </div>
+        </div>
+
+        {/* Bottom: user + pills + edit */}
+        <div className="flex items-center gap-2 pt-2.5 border-t border-gray-50">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-red-400 to-red-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+            {(match.user||'?')[0].toUpperCase()}
+          </div>
+          <span className="text-sm font-medium text-gray-700 flex-1 truncate min-w-0">{match.user||'–'}</span>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Versendet pill */}
+            <span className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${match.versendet==='Ja' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {match.versendet==='Ja' ? <Check className="w-3 h-3"/> : <Xc className="w-3 h-3"/>} V
+            </span>
+            {/* Bezahlt pill */}
+            <span className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${match.bezahlt==='Ja' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {match.bezahlt==='Ja' ? <Check className="w-3 h-3"/> : <Xc className="w-3 h-3"/>} B
+            </span>
+            {/* Papa pill */}
+            <span className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-medium ${match.papa==='Ja' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {match.papa==='Ja' ? <Check className="w-3 h-3"/> : <Xc className="w-3 h-3"/>} P
+            </span>
+            {onEdit && (
+              <button onClick={() => onEdit(match)} className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors ml-0.5">
+                <Edit className="w-3.5 h-3.5"/>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {match.notizen && (
+          <div className="mt-2 text-xs text-gray-400 bg-gray-50 rounded-lg px-2.5 py-1.5 italic">
+            💬 {match.notizen}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── App ────────────────────────────────────────────────────────────────────
+const App = () => {
+  const [season, setSeason]           = useState('25_26');
+  const [matches2526, setMatches2526] = useState(INIT_2526);
+  const [filter, setFilter]           = useState('all'); // 'all'|'bl'|'cl'|'offen'
+  const [search, setSearch]           = useState('');
+  const [editMatch, setEditMatch]     = useState(null);
+  const [clResult, setClResult]       = useState(null);
+  const [clLoading, setClLoading]     = useState(false);
+
+  const data   = season === '25_26' ? matches2526 : INIT_2425;
+  const canEdit = season === '25_26';
+
+  const stats = useMemo(() => ({
+    bl:    data.filter(m => m.comp !== 'Champions League').length,
+    cl:    data.filter(m => m.comp === 'Champions League').length,
+    offen: data.filter(m => m.bezahlt !== 'Ja').length,
+  }), [data]);
+
+  const filtered = useMemo(() => data.filter(m => {
+    const s = search.toLowerCase();
+    if (s && !m.opponent.toLowerCase().includes(s) && !(m.user||'').toLowerCase().includes(s)) return false;
+    if (filter === 'bl')    return m.comp !== 'Champions League';
+    if (filter === 'cl')    return m.comp === 'Champions League';
+    if (filter === 'offen') return m.bezahlt !== 'Ja';
+    return true;
+  }), [data, filter, search]);
+
+  const saveEdit = updated => {
+    setMatches2526(prev => prev.map(m => m.id === updated.id ? updated : m));
+    setEditMatch(null);
+  };
+
+  const toggleFilter = f => setFilter(p => p === f ? 'all' : f);
+
+  const handleCLReload = () => {
+    setClLoading(true);
+    setTimeout(() => {
+      setClLoading(false);
+      // Auslosung hat stattgefunden (27.02.2026): Bayern spielt gegen Atalanta Bergamo
+      const hasAchtel = matches2526.some(m => m.comp === 'Champions League' && (m.clPhase||'').includes('Achtelfinale'));
+      setClResult({ type: 'uptodate', drawn: true, opponent: 'Atalanta Bergamo',
+        hinspiel: 'Di., 10.03.2026 · 21:00 Uhr in Bergamo',
+        rueckspiel: 'Mi., 18.03.2026 · 21:00 Uhr · Allianz Arena' });
+    }, 800);
+  };
+
+  // ── Stat button component (inline) ──
+  const StatBtn = ({ label, value, f, color, ring }) => {
+    const active = filter === f;
+    return (
+      <button onClick={() => toggleFilter(f)}
+        className={`rounded-xl p-3 text-left transition-all flex-1 ${color} ${active ? `ring-2 ${ring} scale-[1.04]` : 'opacity-80 hover:opacity-100'}`}>
+        <div className="text-2xl font-bold text-white">{value}</div>
+        <div className="text-xs text-white/80 leading-tight mt-0.5">{label}</div>
+      </button>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-xl mx-auto px-3 pt-4 pb-24">
+
+        {/* ── HEADER ── */}
+        <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-5 mb-4 shadow-xl">
+          <div className="flex items-center gap-3 mb-4">
+            <Trophy className="w-9 h-9 text-white flex-shrink-0"/>
+            <div>
+              <h1 className="text-xl font-bold text-white">FC Bayern München</h1>
+              <p className="text-red-200 text-xs">Ticketverteilung</p>
+            </div>
+          </div>
+
+          {/* Season tabs */}
+          <div className="flex gap-2 mb-4">
+            {[['25_26','Saison 25/26'],['24_25','Saison 24/25']].map(([k,l]) => (
+              <button key={k} onClick={()=>{setSeason(k);setFilter('all');setSearch('');}}
+                className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-all ${season===k ? 'bg-white text-red-700 shadow-sm' : 'bg-white/20 text-white hover:bg-white/30'}`}>
+                {l}
+              </button>
+            ))}
+          </div>
+
+          {/* Stat filter buttons */}
+          <div className="flex gap-2 mb-3">
+            <StatBtn label="Bundesliga"    value={stats.bl}    f="bl"    color="bg-red-500"   ring="ring-white/60"/>
+            <StatBtn label="Champ. League" value={stats.cl}    f="cl"    color="bg-blue-600"  ring="ring-white/60"/>
+            <StatBtn label="Zahlung offen" value={stats.offen} f="offen" color="bg-amber-500" ring="ring-white/60"/>
+          </div>
+
+          {/* CL reload */}
+          {season === '25_26' && (
+            <button onClick={handleCLReload} disabled={clLoading}
+              className="w-full flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 disabled:opacity-50 border border-white/25 text-white font-semibold py-2.5 rounded-xl transition-all text-sm">
+              <Refresh className={`w-4 h-4 flex-shrink-0 ${clLoading ? 'spin' : ''}`}/>
+              {clLoading ? 'Wird geladen…' : 'CL-Begegnungen neu laden'}
+            </button>
+          )}
+        </div>
+
+        {/* ── SEARCH ── */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex items-center gap-2 px-3 py-2.5 mb-3">
+          <Search className="w-4 h-4 text-gray-400 flex-shrink-0"/>
+          <input value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Gegner oder Person suchen…"
+            className="flex-1 text-sm focus:outline-none bg-transparent placeholder-gray-400"/>
+          {search && <button onClick={()=>setSearch('')} className="text-gray-300 hover:text-gray-500"><Close className="w-4 h-4"/></button>}
+        </div>
+
+        {/* Active filter hint */}
+        {(filter !== 'all' || search) && (
+          <div className="flex items-center justify-between mb-3 px-1">
+            <span className="text-xs text-gray-400">{filtered.length} Spiel{filtered.length!==1?'e':''} angezeigt</span>
+            <button onClick={()=>{setFilter('all');setSearch('');}} className="text-xs text-red-600 font-semibold hover:underline">
+              Alle anzeigen
+            </button>
+          </div>
+        )}
+
+        {/* ── LIST ── */}
+        <div className="grid gap-2.5">
+          {filtered.length === 0 ? (
+            <div className="text-center py-16">
+              <Search className="w-10 h-10 mx-auto mb-2 text-gray-200"/>
+              <p className="text-gray-400 text-sm">Keine Spiele gefunden</p>
+            </div>
+          ) : filtered.map(m => (
+            <MatchCard key={m.id} match={m} onEdit={canEdit ? setEditMatch : null}/>
+          ))}
+        </div>
+
+        {/* ── INTERESSENTEN 2026/27 ── */}
+        {season === '25_26' && filter === 'all' && !search && (
+          <div className="mt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-px flex-1 bg-gray-100"/>
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Interessenten 2026/27</span>
+              <div className="h-px flex-1 bg-gray-100"/>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              {INTERESSENTEN_2627.map((name, i) => (
+                <div key={i} className={`flex items-center gap-3 px-4 py-3 ${i < INTERESSENTEN_2627.length-1 ? 'border-b border-gray-50' : ''}`}>
+                  <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0"/>
+                  <span className="text-sm text-gray-800">{name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {editMatch && <EditModal match={editMatch} onSave={saveEdit} onClose={()=>setEditMatch(null)}/>}
+      {clResult  && <CLModal   result={clResult}                   onClose={()=>setClResult(null)}/>}
+    </div>
+  );
+};
+
+ReactDOM.render(<App/>, document.getElementById('root'));
+</script>
 </body>
 </html>
