@@ -3907,8 +3907,11 @@ async function makeShot(){
     const im=await svgImg(avatarSVG({fig:p.fig,col:p.col,lvl:progOf(u).lvl,eq:p.eq,full:true}),200);
     x.save();x.beginPath();x.arc(cx,980,90,0,Math.PI*2);x.clip();if(im)x.drawImage(im,cx-90,890,180,180);x.restore();
     x.fillStyle="#fff";x.font="800 40px system-ui,sans-serif";x.fillText(rank(i)+". "+nameOf(u),cx,1115);x.fillStyle="#cfc8ff";x.font="600 34px system-ui,sans-serif";x.fillText(fmt(sc[i]),cx,1160);}
-  const hl=gameHighlights().slice(0,2);x.font="600 30px system-ui,sans-serif";x.fillStyle="#e8e4ff";
-  hl.forEach((t,k)=>{const tmp=document.createElement("div");tmp.innerHTML=t[2];x.fillText(t[0]+" "+t[1]+": "+tmp.textContent,W/2,1235+k*44,W-80);});
+  const hl=gameHighlights().slice(0,2);x.textAlign="center";x.textBaseline="alphabetic";x.font="600 30px system-ui,sans-serif";x.fillStyle="#e8e4ff";
+  let yy=1230;const MW=W-140;
+  hl.forEach(t=>{const tmp=document.createElement("div");tmp.innerHTML=t[2];const words=(t[0]+" "+t[1]+": "+tmp.textContent).split(" ");let line="",lines=[];
+    words.forEach(w=>{const tt=line?line+" "+w:w;if(x.measureText(tt).width>MW&&line){lines.push(line);line=w;}else line=tt;});if(line)lines.push(line);
+    lines.slice(0,2).forEach(l=>{if(yy<H-20)x.fillText(l,W/2,yy);yy+=40;});yy+=8;});
   return await new Promise(res=>c.toBlob(b=>res(b),"image/png"));
 }
 function vShot(){
