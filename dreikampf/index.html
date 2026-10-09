@@ -4044,7 +4044,7 @@ async function fbInit(){
   if(!u){try{u=(await auth.signInAnonymously()).user;}catch(e){u=null;}}
   if(!u)return [null,null];
   const fs=firebase.firestore();
-  try{await fs.enablePersistence({synchronizeTabs:true});}catch(e){}
+  try{fs.settings({experimentalAutoDetectLongPolling:true,ignoreUndefinedProperties:true});}catch(e){}
   const wrap=d=>({id:d.id,exists:d.exists,data:()=>d.data()});
   const clean=x=>JSON.parse(JSON.stringify(x));
   const flat=(o,pre,out)=>{for(const k in o){const v=o[k],p=pre.concat(k);if(v&&typeof v==="object"&&!Array.isArray(v)&&Object.keys(v).length)flat(v,p,out);else out.push([p,v]);}return out;};
