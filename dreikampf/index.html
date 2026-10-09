@@ -350,6 +350,7 @@ button.chip{cursor:pointer}
 .mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .mtile{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px 7px;border-radius:12px;border:1.5px solid var(--line);background:rgba(0,0,0,.18);color:var(--muted);font:inherit;font-size:10.5px;font-weight:700;line-height:1.1;text-align:center;cursor:pointer;opacity:.5;filter:grayscale(1);transition:all .15s}
 .mtile .emo{font-size:22px}
+.mtile{position:relative}.mtile .m3{position:absolute;top:3px;right:5px;font-size:9px;opacity:.85}
 .mtile.on{opacity:1;filter:none;color:var(--fg);border-color:var(--p1);background:rgba(62,214,192,.12)}
 .gnums{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:6px}
 .gnum{width:52px;height:52px;border-radius:14px;border:2px solid var(--line);background:var(--bg2);color:var(--fg);font:inherit;font-family:var(--display);font-size:22px;font-weight:800;cursor:pointer}
@@ -1849,6 +1850,7 @@ function offModes(){
   if(offLocal&&G&&offLocal.v===G.v&&Date.now()-offLocal.t<8000){if(JSON.stringify(srv.slice().sort())===JSON.stringify(offLocal.off.slice().sort()))offLocal=null;else return offLocal.off.slice();}
   return srv;
 }
+const MIN3={lun:1,maj:1};
 const MODE_ICON={size:"📏",est:"🔢",time:"⏳",pct:"🎚️",match:"🔗",odd:"🙃",who:"🕵️",hl:"⚖️",bluff:"🤥",maj:"🗳️",know:"🤝",lun:"🔟"};
 const MODE_SHORT={size:"Größenwahn",est:"Schätzen",time:"Zeitstrahl",pct:"Prozent",match:"Zuordnen",odd:"Außenseiter",who:"Wer bin ich?",hl:"Mehr/Weniger",bluff:"Bluff",maj:"Mehrheit",know:"Kennst du …?",lun:"Kleinste Zahl"};
 function flowHtml(LN){return '<div class="flow">'+[["❓",LN.mc+" Fragen"],["🎲",LN.m+"× Überraschung"],["🎯","Geschick"],["🏆","Finale"]].map(x=>'<span><i>'+x[0]+'</i>'+x[1]+'</span>').join('')+'</div>';}
@@ -1870,7 +1872,7 @@ function lobbyShow(){
 }
 function modeGrid(){
   const off=offModes();
-  return '<div class="mgrid">'+POOL_MODES.map(m=>{const a=off.indexOf(m)<0;return '<button class="mtile'+(a?' on':'')+'" data-act="modetog" data-m="'+m+'" aria-pressed="'+a+'"><span class="emo">'+(MODE_ICON[m]||"🎲")+'</span><span>'+h(MODE_SHORT[m]||MODES[m].t)+'</span></button>';}).join('')+'</div><p class="muted small" style="margin:0">'+(L.err?'<strong style="color:var(--bad)">'+h(L.err)+'</strong> ':'')+'Antippen zum An- und Abwählen. Mindestens 2 bleiben an.</p>';
+  return '<div class="mgrid">'+POOL_MODES.map(m=>{const a=off.indexOf(m)<0;return '<button class="mtile'+(a?' on':'')+'" data-act="modetog" data-m="'+m+'" aria-pressed="'+a+'"><span class="emo">'+(MODE_ICON[m]||"🎲")+'</span><span>'+h(MODE_SHORT[m]||MODES[m].t)+'</span>'+(MIN3[m]?'<small class="m3">ab 3</small>':'')+'</button>';}).join('')+'</div><p class="muted small" style="margin:0">'+(L.err?'<strong style="color:var(--bad)">'+h(L.err)+'</strong> ':'')+'Antippen zum An- und Abwählen. Mindestens 2 bleiben an.</p>';
 }
 function modeChips(){
   const off=offModes(),host=amHost(),on=POOL_MODES.length-off.length;
@@ -2018,7 +2020,8 @@ function buildSteps(used,R){
   const LN=LENS[used.len]||LENS.normal,NR=LN.m+2;
   const last=Array.isArray(used.lastModes)?used.lastModes:[];
   const offL=Array.isArray(used.off)?used.off:[];
-  let active=POOL_MODES.filter(m=>offL.indexOf(m)<0&&!(m==="know"&&R.length<2));if(active.length<2)active=POOL_MODES.filter(m=>!(m==="know"&&R.length<2));
+  const fits=m=>!(m==="know"&&R.length<2)&&!(MIN3[m]&&R.length<3);
+  let active=POOL_MODES.filter(m=>offL.indexOf(m)<0&&fits(m));if(active.length<2)active=POOL_MODES.filter(fits);
   let pool=active.filter(m=>last.indexOf(m)<0);if(pool.length<2)pool=active.slice();
   if(pool.length<LN.m)pool=active.slice();
   const modes=weightedPick(pool,Math.min(LN.m,pool.length));used.lastModes=modes;
