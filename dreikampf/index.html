@@ -2682,7 +2682,7 @@ function hostNext(){
   gWrite(()=>gRef().update({idx:idx,reveal:false}));
 }
 function hostReveal(){
-  if(!amHost()||G.reveal)return;
+  if(!amHost()||G.reveal)return;hostTick.rt=Date.now();
   const i=G.idx,snap={};
   roster().forEach(u=>{const v=getAns(u,i);if(v!==null)snap[u]=v;});
   const jl=roster().filter(u=>jokerOf(u,i));
@@ -3803,6 +3803,7 @@ function hostTick(){
     if(dlSet!==k){dlSet=k;gWrite(()=>gRef().update({dl:now+Q_TIME,dlk:k,ds:now}));}
     return;
   }
+  if(revealPending===k&&now-(hostTick.rt||0)>5000){revealPending=null;dlSet=null;}
   const R=roster(),missing=R.filter(u=>getAns(u,G.idx)===null&&!expired(u)).length;
   if(missing===0&&revealPending!==k){revealPending=k;hostReveal();return;}
   if(R.length>1&&missing===1&&G.dl-now>Q_LAST&&dlShort!==k){dlShort=k;gWrite(()=>gRef().update({dl:now+Q_LAST}));}
@@ -4048,11 +4049,14 @@ async function fbInit(){
   const wrap=d=>({id:d.id,exists:d.exists,data:()=>d.data()});
   const clean=x=>JSON.parse(JSON.stringify(x));
   const flat=(o,pre,out)=>{for(const k in o){const v=o[k],p=pre.concat(k);if(v&&typeof v==="object"&&!Array.isArray(v)&&Object.keys(v).length)flat(v,p,out);else out.push([p,v]);}return out;};
+  // Nicht auf Server-Bestätigung warten: Firestore zeigt Änderungen sofort lokal an und schickt sie im Hintergrund.
+  // Sonst blockiert eine langsame Bestätigung alle folgenden Eingaben.
+  const fire=pr=>{pr.catch(e=>{try{onWriteErr(e);}catch(x){}});return Promise.resolve();};
   const D={
     doc:path=>{const r=fs.doc(path);return {
-      set:d=>r.set(clean(d)),
-      update:d=>{const pr=flat(clean(d),[],[]);if(!pr.length)return Promise.resolve();const a=[];pr.forEach(([p,v])=>a.push(new firebase.firestore.FieldPath(...p),v));return r.update(...a);},
-      delete:()=>r.delete(),
+      set:d=>fire(r.set(clean(d))),
+      update:d=>{const pr=flat(clean(d),[],[]);if(!pr.length)return Promise.resolve();const a=[];pr.forEach(([p,v])=>a.push(new firebase.firestore.FieldPath(...p),v));return fire(r.update(...a));},
+      delete:()=>fire(r.delete()),
       get:()=>r.get().then(wrap),
       onSnapshot:(fn,err)=>r.onSnapshot(x=>fn(wrap(x)),err)};},
     collection:c=>({onSnapshot:(fn,err)=>fs.collection(c).onSnapshot(x=>fn({docs:x.docs.map(wrap)}),err)})
