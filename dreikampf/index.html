@@ -288,7 +288,7 @@ button.chip{cursor:pointer}
 .skcv{width:100%;height:240px;border-radius:16px;border:2px dashed var(--line);background:var(--bg2);touch-action:none;display:block}
 .skres{font-family:var(--display);font-size:34px}
 .skhide{display:none!important}
-.hl{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px dashed var(--line);font-size:15px;line-height:1.35}
+.rhl{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px dashed var(--line);font-size:15px;line-height:1.35}
 .hle{font-size:22px;line-height:1}
 .themes{display:flex;flex-wrap:wrap;gap:6px}
 .thb{border:2px solid var(--line);background:var(--bg2);color:var(--muted);border-radius:999px;padding:5px 11px;font:inherit;font-weight:700;font-size:13px}
@@ -3888,7 +3888,7 @@ function gameHighlights(){
 }
 function vRecap(){
   const hl=gameHighlights();
-  return '<div class="card fade"><div class="eyebrow">Rückblick</div>'+(hl.length?'':'<p class="muted">Diesmal keine besonderen Momente. Beim nächsten Mal!</p>')+hl.map(x=>'<div class="hl"><span class="hle">'+x[0]+'</span><span><b>'+x[1]+':</b> '+x[2]+'</span></div>').join('')+
+  return '<div class="card fade"><div class="eyebrow">Rückblick</div>'+(hl.length?'':'<p class="muted">Diesmal keine besonderen Momente. Beim nächsten Mal!</p>')+hl.map(x=>'<div class="rhl"><span class="hle">'+x[0]+'</span><span><b>'+x[1]+':</b> '+x[2]+'</span></div>').join('')+
     '<button class="btn alt" data-act="shot" style="margin-top:10px">📸 Siegerbild erstellen</button></div>';
 }
 function svgImg(svg,px){return new Promise(res=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>res(null);im.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg.replace("<svg ",'<svg width="'+px+'" height="'+px+'" '));});}
