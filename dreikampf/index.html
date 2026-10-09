@@ -4029,7 +4029,7 @@ function vTeamBar(compact){
 /* ========== Ende EXTRAS 2 ========== */
 
 
-const FBCFG=null,FOUNDER_KEY="phx-7Qm2vK9x";
+const FBCFG={"apiKey": "AIzaSyDIfUg-nA3cpvNb7M0wQDweZOyP8c4oU7o", "authDomain": "dreikampf.firebaseapp.com", "projectId": "dreikampf", "storageBucket": "dreikampf.firebasestorage.app", "messagingSenderId": "935345118817", "appId": "1:935345118817:web:f47952457635a074bb1420"},FOUNDER_KEY="phx-7Qm2vK9x";
 async function fbInit(){
   if(!window.firebase||!FBCFG)return [null,null];
   firebase.initializeApp(FBCFG);
