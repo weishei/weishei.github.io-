@@ -3048,6 +3048,7 @@ function vStatus(){
 }
 function vMenu(){
   let b='<button class="btn" data-act="menuclose">Weiter</button><button class="btn alt" data-act="board">Siegerboard</button><button class="btn alt" data-act="avatar">Avatar</button><button class="btn alt" data-act="custom">✍️ Eigene Frage</button>';
+  b+='<button class="btn alt" data-act="devcopy">📲 Mein Profil-Code kopieren</button><button class="btn alt" data-act="devload">Profil von anderem Gerät laden</button>';
   b+='<button class="btn alt" data-act="sound">Sound: '+(soundOn?'an':'aus')+'</button><button class="btn alt" data-act="fxtoggle">Effekte: '+(fxOn?'an':'aus')+'</button>';
   if(!amHost()&&G&&(G.phase==="lobby"||G.phase==="play"))b+='<button class="btn alt" data-act="takeover">'+(L.confirm==="takeover"?'Sicher? Nochmal tippen':'Spielleitung übernehmen')+'</button>';
   if(amHost()&&G.phase==="play")b+='<button class="btn alt" data-act="abort">'+(L.confirm==="abort"?'Wirklich abbrechen? Nochmal tippen':'Spiel abbrechen, neue Lobby')+'</button>';
@@ -3189,6 +3190,8 @@ function act(a,d){
       if(to&&EMOS[d.k]&&P[ME]&&Date.now()-lastTease>3000){lastTease=Date.now();const t=Date.now();meWrite(()=>myRef().update({emo:{to:to,k:d.k,t:t}}));showToast('<span class="toast-e">'+EMOS[d.k][0]+'</span><span>Gesendet an <strong>'+nm(to)+'</strong></span>');}
       renderAll();break;}
     case "menuclose":L.menu=false;renderAll();break;
+    case "devcopy":{const c=ME||"";const done=()=>alert("Dein Profil-Code wurde kopiert:\n\n"+c+"\n\nAuf dem anderen Gerät oder in der Home-Bildschirm-App: Menü → „Profil von anderem Gerät laden“ und einfügen.");try{navigator.clipboard.writeText(c).then(done,()=>prompt("Dein Profil-Code (kopieren):",c));}catch(e){prompt("Dein Profil-Code (kopieren):",c);}}break;
+    case "devload":{const c=(prompt("Profil-Code vom anderen Gerät einfügen:")||"").trim();if(!c)break;if(!/^[A-Za-z0-9_-]{10,40}$/.test(c)){alert("Das ist kein gültiger Code.");break;}if(c===ME){alert("Das ist schon dein Profil.");break;}if(confirm("Dieses Gerät übernimmt das andere Profil (Name, Level, Freischaltungen). Weiter?")){try{localStorage.setItem("dk_id",c);localStorage.removeItem("dk_name");}catch(e){}location.reload();}}break;
     case "sound":soundOn=!soundOn;try{localStorage.setItem("dk_snd",soundOn?"1":"0");}catch(e){}
       if(!soundOn&&silentEl){try{silentEl.pause();}catch(e){}silentEl=null;}
       unlockAudio();renderAll();if(soundOn)setTimeout(()=>sfx.good(),60);break;
@@ -3391,6 +3394,8 @@ function vHome(){
   if(L.showDaily)o+='<div class="mexp">'+dailyBody()+'</div>';
   o+=row("board","🏆","Liga & Siegerboard",monthName(monthKey()).split(" ")[0]+": "+(pi>=0?"Platz "+(pi+1)+" · "+L2[pi].pts+" Pkt":"noch keine Punkte"),'<span class="chev">›</span>');
   o+=row("custom","✍️","Eigene Frage einreichen",nc?nc+" von dir im Topf":"Insider über eure Gruppe",'<span class="chev">›</span>');
+  o+=row("devcopy","📲","Profil mitnehmen","Code kopieren für anderes Gerät oder Home-Bildschirm",'<span class="chev">›</span>');
+  o+=row("devload","📥","Profil laden","Code von einem anderen Gerät einfügen",'<span class="chev">›</span>');
   return o+'</div>';
 }
 function unlockHint(i){
@@ -4052,7 +4057,9 @@ async function fbInit(){
       onSnapshot:(fn,err)=>r.onSnapshot(x=>fn(wrap(x)),err)};},
     collection:c=>({onSnapshot:(fn,err)=>fs.collection(c).onSnapshot(x=>fn({docs:x.docs.map(wrap)}),err)})
   };
-  return [D,{id:async()=>u.uid}];
+  let gid=null;try{gid=localStorage.getItem("dk_id");}catch(e){}
+  if(!gid||!/^[A-Za-z0-9_-]{10,40}$/.test(gid)){gid=u.uid;try{localStorage.setItem("dk_id",gid);}catch(e){}}
+  return [D,{id:async()=>gid}];
 }
 function founderWatch(){
   DB.doc("config/founder").onSnapshot(s=>{const f=s.exists?s.data().u:null;if(f!==FOUNDER){FOUNDER=f;progVer++;profVer++;renderAll(true);}
